@@ -1,0 +1,194 @@
+<div class="container mt-5">
+    <!-- Todo List Title -->
+    <div class="container">
+        <h1 class="todo-title">Todo List</h1>
+    </div>
+
+    <!-- Form to Add New Todo -->
+    <form id="addTodoForm" class="my-4 text-center">
+        <div class="input-group">
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTodoModal">Add Todo</button>
+            </div>
+        </div>
+    </form>
+
+<!-- Wrapper untuk memusatkan -->
+<div class="todo-wrapper">
+    <!-- List of Todos -->
+    <ul id="todoList" class="list-group">
+        <% todos.forEach(todo => { %>
+            <li class="list-group-item d-flex justify-content-between align-items-center todo-card">
+                <span class="<%= todo.completed ? 'completed' : '' %>">
+                    <%= todo.task %>
+                </span>
+                <div>
+                    <button class="btn btn-sm btn-success mr-2 editBtn" data-id="<%= todo.id %>">Edit</button>
+                    <button class="btn btn-sm btn-danger deleteBtn" data-id="<%= todo.id %>">Delete</button>
+                </div>
+            </li>
+        <% }); %>
+    </ul>
+</div>
+
+<!-- Add Todo Modal -->
+<div class="modal fade" id="addTodoModal" tabindex="-1" aria-labelledby="addTodoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addTodoModalLabel">Add Todo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="modalAddTodoForm">
+                    <div class="form-group">
+                        <label for="modalNewTask">Task</label>
+                        <input type="text" id="modalNewTask" class="form-control" placeholder="Enter a new task" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Add Todo</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Todo Modal -->
+<div id="editModal" class="modal fade" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editModalLabel">Edit Todo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTodoForm">
+                    <div class="form-group">
+                        <label for="editTask">Task</label>
+                        <input type="text" id="editTask" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        // Add new todo
+        $('#addTodoForm').on('submit', function (e) {
+            e.preventDefault();
+            const task = $('#newTask').val().trim();
+            if (task) {
+                $.ajax({
+                    url: '/todos',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ task: task }),
+                    success: function (newTodo) {
+                        // Append the new todo card dynamically to the list
+                        const newTodoHtml = `
+                            <li class="list-group-item d-flex justify-content-between align-items-center todo-card">
+                                <span>${newTodo.task}</span>
+                                <div>
+                                    <button class="btn btn-sm btn-success mr-2 editBtn" data-id="${newTodo.id}">Edit</button>
+                                    <button class="btn btn-sm btn-danger deleteBtn" data-id="${newTodo.id}">Delete</button>
+                                </div>
+                            </li>
+                        `;
+                        $('#todoList').append(newTodoHtml);
+                        $('#addTodoModal').modal('hide'); // Hide the modal after adding
+                    },
+                    error: function (error) {
+                        console.error("Error adding task:", error.responseText);
+                    }
+                });
+            }
+        });
+
+        // Delete a todo
+        $('.deleteBtn').on('click', function () {
+            const id = $(this).data('id');
+            $.ajax({
+                url: '/todos/' + id,
+                type: 'DELETE',
+                success: function () {
+                    location.reload(); // Reload to show updated list
+                }
+            });
+        });
+
+        // Show edit modal with the current task
+        let editId;
+        $('.editBtn').on('click', function () {
+            editId = $(this).data('id');
+            const currentTask = $(this).closest('li').find('span').text();
+            $('#editTask').val(currentTask);
+            $('#editModal').modal('show');
+        });
+
+        // Update todo on form submission
+        $('#editTodoForm').on('submit', function (e) {
+            e.preventDefault();
+            const task = $('#editTask').val().trim();
+            if (task) {
+                $.ajax({
+                    url: '/todos/' + editId,
+                    type: 'PUT',
+                    data: JSON.stringify({ task: task, completed: false }),
+                    contentType: 'application/json',
+                    success: function () {
+                        location.reload(); // Reload to show the updated todo
+                    }
+                });
+            }
+        });
+    });
+
+    $(document).ready(function () {
+    // Tangani submit form dalam modal
+    $('#modalAddTodoForm').on('submit', function (e) {
+        e.preventDefault();
+
+        // Ambil nilai input dari modal
+        const task = $('#modalNewTask').val().trim();
+
+        if (task) {
+            // Kirim data ke server atau tambahkan langsung ke daftar
+            $.ajax({
+                url: '/todos', // Ubah URL sesuai endpoint server Anda
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ task: task }),
+                success: function (newTodo) {
+                    // Tambahkan ke UI
+                    const newTodoHtml = `
+                        <li class="list-group-item d-flex justify-content-between align-items-center todo-card">
+                            <span>${newTodo.task}</span>
+                            <div>
+                                <button class="btn btn-sm btn-success mr-2 editBtn" data-id="${newTodo.id}">Edit</button>
+                                <button class="btn btn-sm btn-danger deleteBtn" data-id="${newTodo.id}">Delete</button>
+                            </div>
+                        </li>
+                    `;
+                    $('#todoList').append(newTodoHtml);
+
+                    // Reset form dan tutup modal
+                    $('#modalNewTask').val('');
+                    $('#addTodoModal').modal('hide');
+                },
+                error: function (error) {
+                    console.error('Error:', error);
+                }
+            });
+        } else {
+            alert('Please enter a task.');
+        }
+    });
+});
+</script>
+
+<footer>
+    &copy; Copyright 2024 Aryanitha.
+</footer>
